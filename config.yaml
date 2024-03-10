@@ -1,0 +1,32 @@
+width: 640
+height: 320
+released: "nes-released.png"
+pressed: "nes-pressed.png"
+buttons:
+    # All buttons:
+    # * A, B, X, Y,
+    # * Back, Guide, Start,
+    # * LeftStick, RightStick,
+    # * LeftShoulder, RightShoulder,
+    # * DPadUp, DPadDown, DPadLeft, DPadRight
+    A: { x: 332, y: 122, width: 56, height: 55 }
+    B: { x: 398, y: 122, width: 55, height: 55 }
+    Back: { x: 177, y: 139, width: 47, height: 24 }
+    Guide: { x: 247, y: 139, width: 48, height: 23 }
+    DPadUp: { x: 98, y: 130, width: 28, height: 24 }
+    DPadDown: { x: 98, y: 214, width: 28, height: 24 }
+    DPadLeft: { x: 58, y: 170, width: 24, height: 28 }
+    DPadRight: { x: 142, y: 170, width: 24, height: 28 }
+axis:
+    # All axis:
+    # * LeftX, LeftY,
+    # * RightX, RightY,
+    # * TriggerLeft, TriggerRight,
+    LeftX:
+        deadzone: 8192
+        min: { x: 98, y: 214, width: 28, height: 24 }
+        max: { x: 98, y: 130, width: 28, height: 24 }
+    LeftY:
+        deadzone: 8192
+        min: { x: 142, y: 170, width: 24, height: 28 }
+        max: { x: 58, y: 170, width: 24, height: 28 }

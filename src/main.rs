@@ -3,6 +3,7 @@
 mod config;
 mod error;
 mod font;
+mod joysticks;
 mod mapping;
 mod options;
 mod visualizer;
@@ -71,7 +72,7 @@ fn run() -> ApplicationResult<()> {
                 } => {
                     visualiser.update_setup()?;
                 }
-                Event::KeyDown {..} => visualiser.hide_help(),
+                Event::KeyDown { .. } => visualiser.hide_help(),
                 Event::JoyDeviceAdded { which, .. } => {
                     visualiser.joystick_add(&joystick_subsystem, which)?
                 }
@@ -80,6 +81,7 @@ fn run() -> ApplicationResult<()> {
             }
         }
 
+        visualiser.update()?;
         visualiser.draw(&mut canvas)?;
         canvas.present();
 

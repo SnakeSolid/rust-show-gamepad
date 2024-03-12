@@ -3,21 +3,77 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 
+use sdl2::joystick::HatState;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::error::ApplicationResult;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
-enum Direction {
+pub enum Direction {
     Minimum,
     Maximum,
+}
+
+impl Direction {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Direction::Minimum => "min",
+            Direction::Maximum => "max",
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum State {
+    Center,
+    Up,
+    Right,
+    Down,
+    Left,
+    RightUp,
+    RightDown,
+    LeftUp,
+    LeftDown,
+}
+
+impl State {
+    pub fn as_str(&self) -> &str {
+        match self {
+            State::Center => "*",
+            State::Up => "^",
+            State::Right => ">",
+            State::Down => "v",
+            State::Left => "<",
+            State::RightUp => "^>",
+            State::RightDown => "v>",
+            State::LeftUp => "<^",
+            State::LeftDown => "<v",
+        }
+    }
+}
+
+impl From<HatState> for State {
+    fn from(value: HatState) -> Self {
+        match value {
+            HatState::Centered => State::Center,
+            HatState::Up => State::Up,
+            HatState::Right => State::Right,
+            HatState::Down => State::Down,
+            HatState::Left => State::Left,
+            HatState::RightUp => State::RightUp,
+            HatState::RightDown => State::RightDown,
+            HatState::LeftUp => State::LeftUp,
+            HatState::LeftDown => State::LeftDown,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Input {
     Button { button: u32 },
     Axis { axis: u32, direction: Direction },
+    Hat { hat: u32, state: State },
 }
 
 impl Input {
@@ -38,20 +94,24 @@ impl Input {
             direction: Direction::Maximum,
         }
     }
+
+    pub fn hat<S>(hat: u32, state: S) -> Self
+    where
+        S: Into<State>,
+    {
+        Input::Hat {
+            hat,
+            state: state.into(),
+        }
+    }
 }
 
 impl ToString for Input {
     fn to_string(&self) -> String {
         match self {
             Input::Button { button } => format!("b{}", button),
-            Input::Axis {
-                axis,
-                direction: Direction::Minimum,
-            } => format!("a{} min", axis),
-            Input::Axis {
-                axis,
-                direction: Direction::Maximum,
-            } => format!("a{} max", axis),
+            Input::Axis { axis, direction } => format!("a{} {}", axis, direction.as_str()),
+            Input::Hat { hat, state } => format!("h{} {}", hat, state.as_str()),
         }
     }
 }

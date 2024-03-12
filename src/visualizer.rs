@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use sdl2::image::LoadTexture;
-use sdl2::joystick::Joystick;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::render::Texture;
@@ -14,6 +13,7 @@ use sdl2::JoystickSubsystem;
 use crate::config::Config;
 use crate::error::ApplicationResult;
 use crate::font::Font;
+use crate::joysticks::Joysticks;
 use crate::mapping::Input;
 use crate::mapping::Mapping;
 
@@ -24,7 +24,7 @@ pub struct Visualiser<'a> {
     font: &'a Font<'a>,
     show_help: bool,
     mapping: Mapping,
-    joysticks: HashMap<u32, Joystick>,
+    joysticks: Joysticks,
     setup: SetupOverlay,
 }
 
@@ -48,14 +48,6 @@ impl<'a> Visualiser<'a> {
         }
 
         let n_sprites = sprites.len();
-        let mut joysticks = HashMap::new();
-
-        for id in 0..joystick_subsystem.num_joysticks()? {
-            let joystick = joystick_subsystem.open(id)?;
-
-            joysticks.insert(id, joystick);
-        }
-
         let mapping = match preferences.exists() {
             true => Mapping::load(&preferences)?,
             false => Mapping::new(),
@@ -68,7 +60,7 @@ impl<'a> Visualiser<'a> {
             font,
             show_help: true,
             mapping,
-            joysticks,
+            joysticks: Joysticks::create(joystick_subsystem)?,
             setup: SetupOverlay::new(n_sprites),
         })
     }
@@ -78,15 +70,15 @@ impl<'a> Visualiser<'a> {
         joystick_subsystem: &JoystickSubsystem,
         id: u32,
     ) -> ApplicationResult<()> {
-        let joystick = joystick_subsystem.open(id)?;
-
-        self.joysticks.insert(id, joystick);
-
-        Ok(())
+        self.joysticks.add(joystick_subsystem, id)
     }
 
     pub fn joystick_remove(&mut self, id: u32) {
-        self.joysticks.remove(&id);
+        self.joysticks.remove(id);
+    }
+
+    pub fn update(&mut self) -> ApplicationResult<()> {
+        self.joysticks.update()
     }
 
     pub fn hide_help(&mut self) {
@@ -95,12 +87,11 @@ impl<'a> Visualiser<'a> {
 
     pub fn update_setup(&mut self) -> ApplicationResult<()> {
         if self.setup.enabled() {
-            if let Some(input_state) = self.setup.pressed() {
-                let guid = input_state.guid().into();
-                let buttons = input_state.pressed();
-                let sprite = self.setup.current_sprite;
+            if let Some(guid) = self.joysticks.active() {
+                let pressed = self.joysticks.pressed();
+                let sprite = self.setup.current_sprite();
 
-                self.mapping.push(guid, buttons, sprite);
+                self.mapping.push(guid, pressed, sprite);
             }
 
             if !self.setup.next_sprite() {
@@ -114,38 +105,6 @@ impl<'a> Visualiser<'a> {
     }
 
     pub fn draw(&mut self, canvas: &mut WindowCanvas) -> ApplicationResult<()> {
-        let mut pressed = HashSet::new();
-        let mut active_guid = None;
-
-        for joystick in self.joysticks.values() {
-            let guid = joystick.guid().to_string();
-
-            for axis in 0..joystick.num_axes() {
-                let value = joystick.axis(axis)?;
-
-                match value {
-                    v if v < -8192 => {
-                        pressed.insert(Input::axis_min(axis));
-                        active_guid = Some(guid.clone());
-                    }
-                    v if v > 8192 => {
-                        pressed.insert(Input::axis_max(axis));
-                        active_guid = Some(guid.clone());
-                    }
-                    _ => {}
-                }
-            }
-
-            for button in 0..joystick.num_buttons() {
-                let guid = joystick.guid().to_string();
-
-                if joystick.button(button)? {
-                    pressed.insert(Input::button(button));
-                    active_guid = Some(guid);
-                }
-            }
-        }
-
         canvas.copy(&self.background, None, None)?;
 
         if self.show_help {
@@ -159,15 +118,16 @@ impl<'a> Visualiser<'a> {
                 "Use 'Return' key to start mapping.\nPress any button to hide message.",
             )?;
 
-            self.show_help = !pressed.is_empty() || !self.setup.enabled();
+            self.show_help = !self.joysticks.released() || !self.setup.enabled();
         }
 
         if self.setup.enabled() {
+            let pressed = self.joysticks.pressed();
+            let sprite = self.setup.current_sprite();
+
             canvas.set_blend_mode(BlendMode::Blend);
             canvas.set_draw_color(Color::RGBA(0, 0, 0, 192));
             canvas.fill_rect(None)?;
-
-            let sprite = self.setup.current_sprite();
 
             if let Some(sprite) = self.sprites.get(&sprite) {
                 canvas.copy(&sprite.texture(), None, None)?;
@@ -176,15 +136,15 @@ impl<'a> Visualiser<'a> {
                     canvas,
                     8,
                     8,
-                    &format!("Binding input for {}", sprite.name()),
+                    &format!("Binding input for {}.", sprite.name()),
                 )?;
+                self.font.write(canvas, 8, 88, "Press 'Return' to save.")?;
             }
 
-            if let Some(guid) = active_guid {
+            if !pressed.is_empty() {
                 let mut buttons: Vec<_> = pressed.iter().map(ToString::to_string).collect();
                 buttons.sort();
 
-                self.setup.set_pressed(guid, pressed);
                 self.font.write(
                     canvas,
                     8,
@@ -195,9 +155,10 @@ impl<'a> Visualiser<'a> {
                 self.font.write(canvas, 8, 48, &format!("No active keys"))?;
             }
         } else {
-            if let Some(giud) = active_guid {
+            if let Some(giud) = self.joysticks.active() {
                 let mut groups = HashSet::new();
-                let sprites = self.mapping.sprites(&giud, &pressed);
+                let pressed = self.joysticks.pressed();
+                let sprites = self.mapping.sprites(&giud, pressed);
 
                 for sprite in sprites {
                     if let Some(sprite) = self.sprites.get(&sprite) {
@@ -220,8 +181,11 @@ struct InputState {
 }
 
 impl InputState {
-    pub fn new(guid: String, pressed: HashSet<Input>) -> Self {
-        Self { guid, pressed }
+    pub fn new(guid: &str, pressed: &HashSet<Input>) -> Self {
+        Self {
+            guid: guid.into(),
+            pressed: pressed.clone(),
+        }
     }
 
     pub fn guid(&self) -> &str {
@@ -263,7 +227,7 @@ impl SetupOverlay {
         self.pressed.take()
     }
 
-    pub fn set_pressed(&mut self, guid: String, pressed: HashSet<Input>) {
+    pub fn set_pressed(&mut self, guid: &str, pressed: &HashSet<Input>) {
         self.pressed = Some(InputState::new(guid, pressed));
     }
 

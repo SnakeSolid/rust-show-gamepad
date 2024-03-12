@@ -20,6 +20,6 @@ features = [
 version = "0.36"
 default-features = false
 features = [
+    "gfx",
     "image",
-    "mixer",
 ]

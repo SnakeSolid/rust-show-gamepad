@@ -1,210 +1,283 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::path::PathBuf;
 
-use sdl2::controller::Axis;
-use sdl2::controller::Button;
-use sdl2::controller::GameController;
+use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::image::LoadTexture;
-use sdl2::rect::Rect;
+use sdl2::joystick::Joystick;
+use sdl2::pixels::Color;
+use sdl2::render::BlendMode;
 use sdl2::render::Texture;
 use sdl2::render::TextureCreator;
 use sdl2::render::WindowCanvas;
-use sdl2::GameControllerSubsystem;
+use sdl2::JoystickSubsystem;
 
-use crate::config::AxisBounds;
-use crate::config::ButtonBounds;
 use crate::config::Config;
-use crate::config::ConfigAxis;
-use crate::config::ConfigButton;
 use crate::error::ApplicationResult;
+use crate::mapping::Input;
+use crate::mapping::Mapping;
 
 pub struct Visualiser<'a> {
-    released: Texture<'a>,
-    pressed: Texture<'a>,
-    mapping_button: HashMap<Button, Rect>,
-    mapping_axis_min: HashMap<Axis, Rect>,
-    mapping_axis_max: HashMap<Axis, Rect>,
-    axis_deadzones: HashMap<Axis, u16>,
-    controllers: HashMap<u32, GameController>,
+    background: Texture<'a>,
+    sprites: HashMap<usize, Sprite<'a>>,
+    preferences: PathBuf,
+    mapping: Mapping,
+    joysticks: HashMap<u32, Joystick>,
+    setup: SetupOverlay,
 }
-
-const ALL_BUTTONS: &[Button] = &[
-    Button::A,
-    Button::B,
-    Button::X,
-    Button::Y,
-    Button::Back,
-    Button::Guide,
-    Button::Start,
-    Button::LeftStick,
-    Button::RightStick,
-    Button::LeftShoulder,
-    Button::RightShoulder,
-    Button::DPadUp,
-    Button::DPadDown,
-    Button::DPadLeft,
-    Button::DPadRight,
-];
-
-const ALL_AXIS: &[Axis] = &[
-    Axis::LeftX,
-    Axis::LeftY,
-    Axis::RightX,
-    Axis::RightY,
-    Axis::TriggerLeft,
-    Axis::TriggerRight,
-];
 
 impl<'a> Visualiser<'a> {
     pub fn create<'b, T>(
         config: &Config,
+        preferences: PathBuf,
         texture_creator: &'b TextureCreator<T>,
-        game_controller: &GameControllerSubsystem,
+        joystick_subsystem: &JoystickSubsystem,
     ) -> ApplicationResult<Visualiser<'b>> {
-        let released = texture_creator.load_texture(config.released())?;
-        let pressed = texture_creator.load_texture(config.pressed())?;
-        let mapping_button = button_maping(config.buttons());
-        let (mapping_axis_min, mapping_axis_max, axis_deadzones) = axis_maping(config.axis());
-        let mut controllers = HashMap::new();
+        let background = texture_creator.load_texture(config.background())?;
+        let mut sprites = HashMap::new();
 
-        for id in 0..game_controller.num_joysticks()? {
-            if game_controller.is_game_controller(id) {
-                let controller = game_controller.open(id)?;
+        for (id, sprite) in config.sprites().iter().enumerate() {
+            let group = sprite.group();
+            let name = sprite.name();
+            let sprite = texture_creator.load_texture(sprite.path())?;
 
-                controllers.insert(id, controller);
-            }
+            sprites.insert(id.clone(), Sprite::new(group, name, sprite));
         }
 
+        let n_sprites = sprites.len();
+        let mut joysticks = HashMap::new();
+
+        for id in 0..joystick_subsystem.num_joysticks()? {
+            let joystick = joystick_subsystem.open(id)?;
+
+            joysticks.insert(id, joystick);
+        }
+
+        let mapping = match preferences.exists() {
+            true => Mapping::load(&preferences)?,
+            false => Mapping::new(),
+        };
+
         Ok(Visualiser {
-            released,
-            pressed,
-            mapping_button,
-            mapping_axis_min,
-            mapping_axis_max,
-            axis_deadzones,
-            controllers,
+            background,
+            sprites,
+            preferences,
+            mapping,
+            joysticks,
+            setup: SetupOverlay::new(n_sprites),
         })
     }
 
-    pub fn controller_add(
+    pub fn joystick_add(
         &mut self,
-        game_controller: &GameControllerSubsystem,
+        joystick_subsystem: &JoystickSubsystem,
         id: u32,
     ) -> ApplicationResult<()> {
-        if game_controller.is_game_controller(id) {
-            let controller = game_controller.open(id)?;
+        let joystick = joystick_subsystem.open(id)?;
 
-            self.controllers.insert(id, controller);
+        self.joysticks.insert(id, joystick);
+
+        Ok(())
+    }
+
+    pub fn joystick_remove(&mut self, id: u32) {
+        self.joysticks.remove(&id);
+    }
+
+    pub fn update_setup(&mut self) -> ApplicationResult<()> {
+        if self.setup.enabled() {
+            if let Some(input_state) = self.setup.pressed() {
+                let guid = input_state.guid().into();
+                let buttons = input_state.pressed();
+                let sprite = self.setup.current_sprite;
+
+                self.mapping.push(guid, buttons, sprite);
+            }
+
+            if !self.setup.next_sprite() {
+                self.mapping.save(&self.preferences)?;
+            }
+        } else {
+            self.setup.enable();
         }
 
         Ok(())
     }
 
-    pub fn controller_remove(&mut self, id: u32) {
-        self.controllers.remove(&id);
-    }
+    pub fn draw(&mut self, canvas: &mut WindowCanvas) -> ApplicationResult<()> {
+        let mut pressed = HashSet::new();
+        let mut active_guid = None;
 
-    pub fn draw(&self, canvas: &mut WindowCanvas) -> ApplicationResult<()> {
-        canvas.copy(&self.released, None, None)?;
+        for joystick in self.joysticks.values() {
+            let guid = joystick.guid().to_string();
 
-        for controller in self.controllers.values() {
-            for axis in ALL_AXIS {
-                let deadzone = self.axis_deadzones.get(axis).cloned().unwrap_or(8192);
-                let value = controller.axis(*axis);
+            for axis in 0..joystick.num_axes() {
+                let value = joystick.axis(axis)?;
 
                 match value {
-                    v if (v.abs() as u16) < deadzone => {
-                        if let Some(rect) = self.mapping_axis_min.get(axis).cloned() {
-                            canvas.copy(&self.pressed, rect, rect)?;
-                        }
+                    v if v < -8192 => {
+                        pressed.insert(Input::axis_min(axis));
+                        active_guid = Some(guid.clone());
                     }
-                    v if (v.abs() as u16) < deadzone => {
-                        if let Some(rect) = self.mapping_axis_max.get(axis).cloned() {
-                            canvas.copy(&self.pressed, rect, rect)?;
-                        }
+                    v if v > 8192 => {
+                        pressed.insert(Input::axis_max(axis));
+                        active_guid = Some(guid.clone());
                     }
                     _ => {}
                 }
             }
 
-            for button in ALL_BUTTONS {
-                if controller.button(*button) {
-                    if let Some(rect) = self.mapping_button.get(button).cloned() {
-                        canvas.copy(&self.pressed, rect, rect)?;
+            for button in 0..joystick.num_buttons() {
+                let guid = joystick.guid().to_string();
+
+                if joystick.button(button)? {
+                    pressed.insert(Input::button(button));
+                    active_guid = Some(guid);
+                }
+            }
+        }
+
+        canvas.copy(&self.background, None, None)?;
+
+        if self.setup.enabled() {
+            canvas.set_blend_mode(BlendMode::Blend);
+            canvas.set_draw_color(Color::RGBA(0, 0, 0, 192));
+            canvas.fill_rect(None)?;
+
+            let sprite = self.setup.current_sprite();
+
+            if let Some(sprite) = self.sprites.get(&sprite) {
+                canvas.copy(&sprite.texture(), None, None)?;
+                canvas.string(
+                    8,
+                    8,
+                    &format!("Binding input for {}", sprite.name()),
+                    Color::RGB(255, 255, 255),
+                )?;
+            }
+
+            if let Some(guid) = active_guid {
+                let mut buttons: Vec<_> = pressed.iter().map(ToString::to_string).collect();
+                buttons.sort();
+                canvas.string(
+                    8,
+                    24,
+                    &format!("Active keys: {}", buttons.join(", ")),
+                    Color::RGB(255, 255, 255),
+                )?;
+
+                self.setup.set_pressed(guid, pressed);
+            }
+        } else {
+            if let Some(giud) = active_guid {
+                let mut groups = HashSet::new();
+                let sprites = self.mapping.sprites(&giud, &pressed);
+
+                for sprite in sprites {
+                    if let Some(sprite) = self.sprites.get(&sprite) {
+                        if groups.insert(sprite.group()) {
+                            canvas.copy(&sprite.texture(), None, None)?;
+                        }
                     }
                 }
             }
         }
 
-        canvas.present();
-
         Ok(())
     }
 }
 
-fn button_maping(buttons: &HashMap<ConfigButton, ButtonBounds>) -> HashMap<Button, Rect> {
-    let mut result = HashMap::new();
-
-    for (button, bounds) in buttons {
-        let rect = bounds_to_rect(bounds);
-        let button = match button {
-            ConfigButton::A => Button::A,
-            ConfigButton::B => Button::B,
-            ConfigButton::X => Button::X,
-            ConfigButton::Y => Button::Y,
-            ConfigButton::Back => Button::Back,
-            ConfigButton::Guide => Button::Guide,
-            ConfigButton::Start => Button::Start,
-            ConfigButton::LeftStick => Button::LeftStick,
-            ConfigButton::RightStick => Button::RightStick,
-            ConfigButton::LeftShoulder => Button::LeftShoulder,
-            ConfigButton::RightShoulder => Button::RightShoulder,
-            ConfigButton::DPadUp => Button::DPadUp,
-            ConfigButton::DPadDown => Button::DPadDown,
-            ConfigButton::DPadLeft => Button::DPadLeft,
-            ConfigButton::DPadRight => Button::DPadRight,
-        };
-
-        result.insert(button, rect);
-    }
-
-    result
+#[derive(Debug)]
+struct InputState {
+    guid: String,
+    pressed: HashSet<Input>,
 }
 
-fn axis_maping(
-    axis: &HashMap<ConfigAxis, AxisBounds>,
-) -> (HashMap<Axis, Rect>, HashMap<Axis, Rect>, HashMap<Axis, u16>) {
-    let mut axis_min = HashMap::new();
-    let mut axis_max = HashMap::new();
-    let mut deadzones = HashMap::new();
+impl InputState {
+    pub fn new(guid: String, pressed: HashSet<Input>) -> Self {
+        Self { guid, pressed }
+    }
 
-    for (axis, bounds) in axis {
-        let min = bounds_to_rect(bounds.min());
-        let max = bounds_to_rect(bounds.max());
-        let axis = match axis {
-            ConfigAxis::LeftX => Axis::LeftX,
-            ConfigAxis::LeftY => Axis::LeftY,
-            ConfigAxis::RightX => Axis::RightX,
-            ConfigAxis::RightY => Axis::RightY,
-            ConfigAxis::TriggerLeft => Axis::TriggerLeft,
-            ConfigAxis::TriggerRight => Axis::TriggerRight,
-        };
+    pub fn guid(&self) -> &str {
+        &self.guid
+    }
 
-        axis_min.insert(axis, min);
-        axis_max.insert(axis, max);
+    pub fn pressed(&self) -> &HashSet<Input> {
+        &self.pressed
+    }
+}
 
-        if let Some(deadzone) = bounds.deadzone() {
-            deadzones.insert(axis, deadzone);
+#[derive(Debug)]
+struct SetupOverlay {
+    n_sprites: usize,
+    enabled: bool,
+    current_sprite: usize,
+    pressed: Option<InputState>,
+}
+
+impl SetupOverlay {
+    pub fn new(n_sprites: usize) -> Self {
+        Self {
+            n_sprites,
+            enabled: false,
+            current_sprite: 0,
+            pressed: None,
         }
     }
 
-    (axis_min, axis_max, deadzones)
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn current_sprite(&self) -> usize {
+        self.current_sprite
+    }
+
+    pub fn pressed(&mut self) -> Option<InputState> {
+        self.pressed.take()
+    }
+
+    pub fn set_pressed(&mut self, guid: String, pressed: HashSet<Input>) {
+        self.pressed = Some(InputState::new(guid, pressed));
+    }
+
+    pub fn enable(&mut self) {
+        self.enabled = true;
+        self.current_sprite = 0;
+        self.pressed = None;
+    }
+
+    pub fn next_sprite(&mut self) -> bool {
+        self.current_sprite += 1;
+        self.enabled = self.current_sprite < self.n_sprites;
+        self.enabled
+    }
 }
 
-fn bounds_to_rect(bounds: &ButtonBounds) -> Rect {
-    Rect::new(
-        bounds.x() as i32,
-        bounds.y() as i32,
-        bounds.width(),
-        bounds.height(),
-    )
+struct Sprite<'a> {
+    group: usize,
+    name: String,
+    texture: Texture<'a>,
+}
+
+impl<'a> Sprite<'a> {
+    pub fn new<'b>(group: usize, name: &str, texture: Texture<'b>) -> Sprite<'b> {
+        Sprite {
+            group,
+            name: name.into(),
+            texture,
+        }
+    }
+
+    pub fn group(&self) -> usize {
+        self.group
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn texture(&self) -> &Texture {
+        &self.texture
+    }
 }

@@ -4,6 +4,7 @@ use std::fmt::Error as FmtError;
 use std::fmt::Formatter;
 use std::io::Error as IoError;
 
+use sdl2::filesystem::PrefPathError;
 use sdl2::render::TargetRenderError;
 use sdl2::render::TextureValueError;
 use sdl2::video::WindowBuildError;
@@ -33,6 +34,12 @@ impl From<WindowBuildError> for ApplicationError {
 
 impl From<IntegerOrSdlError> for ApplicationError {
     fn from(value: IntegerOrSdlError) -> ApplicationError {
+        format!("{}", value).into()
+    }
+}
+
+impl From<PrefPathError> for ApplicationError {
+    fn from(value: PrefPathError) -> ApplicationError {
         format!("{}", value).into()
     }
 }

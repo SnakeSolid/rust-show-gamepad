@@ -2,55 +2,52 @@
 
 mod config;
 mod error;
+mod mapping;
 mod options;
 mod visualizer;
 
+use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 
 use error::ApplicationResult;
 use options::Options;
 use sdl2::event::Event;
+use sdl2::filesystem;
 use sdl2::image::LoadSurface;
 use sdl2::keyboard::Keycode;
-use sdl2::messagebox ;
-use sdl2::messagebox:: ButtonData ;
-use sdl2::messagebox:: MessageBoxButtonFlag;
-use sdl2::messagebox:: MessageBoxFlag;
+use sdl2::messagebox;
+use sdl2::messagebox::ButtonData;
+use sdl2::messagebox::MessageBoxButtonFlag;
+use sdl2::messagebox::MessageBoxFlag;
 use sdl2::surface::Surface;
 use structopt::StructOpt;
 use visualizer::Visualiser;
 
 const FRAME_TIME: Duration = Duration::from_millis(1_000 / 60);
 
-fn main() -> ApplicationResult<()> {
+fn run() -> ApplicationResult<()> {
     sdl2::hint::set("SDL_JOYSTICK_THREAD", "1");
 
     let options = Options::from_args();
     let config = config::load(options.config_path())?;
     let sdl = sdl2::init()?;
     let video_subsystem = sdl.video()?;
-    let game_controller = sdl.game_controller()?;
-    let (width, height) = Surface::from_file(config.released())?.size();
+    let joystick_subsystem = sdl.joystick()?;
+    let (width, height) = Surface::from_file(config.background())?.size();
     let window = video_subsystem
         .window("Show Controller", width, height)
         .position_centered()
         .build()?;
     let mut event_pump = sdl.event_pump()?;
-    let mut canvas = window
-        .into_canvas()
-        .accelerated()
-        .target_texture()
-        .build()?;
+    let mut canvas = window.into_canvas().accelerated().build()?;
     let texture_creator = canvas.texture_creator();
-    let mut visualiser = Visualiser::create(&config, &texture_creator, &game_controller)?;
+    let preferences = filesystem::pref_path("snake", "show-controller")?;
+    let mut preferences = PathBuf::from(preferences);
+    preferences.push("preferences.yaml");
 
-    let _ = messagebox::show_message_box(MessageBoxFlag::empty(), &[
-        ButtonData {
-            flags: MessageBoxButtonFlag::RETURNKEY_DEFAULT,
-            button_id: 1,
-            text: "Ok",
-        }], "title", "message", None, None);
+    let mut visualiser =
+        Visualiser::create(&config, preferences, &texture_creator, &joystick_subsystem)?;
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -60,19 +57,46 @@ fn main() -> ApplicationResult<()> {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
-                Event::ControllerDeviceAdded { which, .. } => {
-                    visualiser.controller_add(&game_controller, which)?;
+                Event::KeyDown {
+                    keycode: Some(Keycode::Return),
+                    ..
+                } => {
+                    visualiser.update_setup()?;
                 }
-                Event::ControllerDeviceRemoved { which, .. } => {
-                    visualiser.controller_remove(which);
+                Event::JoyDeviceAdded { which, .. } => {
+                    visualiser.joystick_add(&joystick_subsystem, which)?
                 }
+                Event::JoyDeviceRemoved { which, .. } => visualiser.joystick_remove(which),
                 _ => {}
             }
         }
 
         visualiser.draw(&mut canvas)?;
+        canvas.present();
+
         thread::sleep(FRAME_TIME);
     }
 
     Ok(())
+}
+
+fn main() {
+    if let Err(error) = run() {
+        let flags = MessageBoxButtonFlag::empty()
+            .union(MessageBoxButtonFlag::RETURNKEY_DEFAULT)
+            .union(MessageBoxButtonFlag::ESCAPEKEY_DEFAULT);
+        let button = ButtonData {
+            flags,
+            button_id: 1,
+            text: "Ok",
+        };
+        let _ = messagebox::show_message_box(
+            MessageBoxFlag::empty(),
+            &[button],
+            "Error",
+            &error.to_string(),
+            None,
+            None,
+        );
+    }
 }

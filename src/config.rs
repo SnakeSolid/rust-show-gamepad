@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
@@ -9,113 +8,38 @@ use crate::error::ApplicationResult;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    width: u32,
-    height: u32,
-    released: PathBuf,
-    pressed: PathBuf,
-    buttons: HashMap<ConfigButton, ButtonBounds>,
-    axis: HashMap<ConfigAxis, AxisBounds>,
+    background: PathBuf,
+    sprites: Vec<Sprite>,
 }
 
 impl Config {
-    pub fn width(&self) -> u32 {
-        self.width
+    pub fn background(&self) -> &Path {
+        &self.background
     }
 
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
-    pub fn released(&self) -> &Path {
-        &self.released
-    }
-
-    pub fn pressed(&self) -> &Path {
-        &self.pressed
-    }
-
-    pub fn buttons(&self) -> &HashMap<ConfigButton, ButtonBounds> {
-        &self.buttons
-    }
-
-    pub fn axis(&self) -> &HashMap<ConfigAxis, AxisBounds> {
-        &self.axis
-    }
-}
-
-#[derive(Debug, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum ConfigButton {
-    A,
-    B,
-    X,
-    Y,
-    Back,
-    Guide,
-    Start,
-    LeftStick,
-    RightStick,
-    LeftShoulder,
-    RightShoulder,
-    DPadUp,
-    DPadDown,
-    DPadLeft,
-    DPadRight,
-}
-
-#[derive(Debug, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum ConfigAxis {
-    LeftX,
-    LeftY,
-    RightX,
-    RightY,
-    TriggerLeft,
-    TriggerRight,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ButtonBounds {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
-}
-
-impl ButtonBounds {
-    pub fn x(&self) -> u32 {
-        self.x
-    }
-
-    pub fn y(&self) -> u32 {
-        self.y
-    }
-
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn height(&self) -> u32 {
-        self.height
+    pub fn sprites(&self) -> &[Sprite] {
+        &self.sprites
     }
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AxisBounds {
-    deadzone: Option<u16>,
-    min: ButtonBounds,
-    max: ButtonBounds,
+pub struct Sprite {
+    group: usize,
+    name: String,
+    path: PathBuf,
 }
 
-impl AxisBounds {
-    pub fn deadzone(&self) -> Option<u16> {
-        self.deadzone
+impl Sprite {
+    pub fn group(&self) -> usize {
+        self.group
     }
 
-    pub fn min(&self) -> &ButtonBounds {
-        &self.min
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
-    pub fn max(&self) -> &ButtonBounds {
-        &self.max
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 }
 

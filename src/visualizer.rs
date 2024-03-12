@@ -89,6 +89,10 @@ impl<'a> Visualiser<'a> {
         self.joysticks.remove(&id);
     }
 
+    pub fn hide_help(&mut self) {
+        self.show_help = false;
+    }
+
     pub fn update_setup(&mut self) -> ApplicationResult<()> {
         if self.setup.enabled() {
             if let Some(input_state) = self.setup.pressed() {
@@ -145,12 +149,17 @@ impl<'a> Visualiser<'a> {
         canvas.copy(&self.background, None, None)?;
 
         if self.show_help {
-                self.font.write(
-                    canvas,
-                    8,
-                    8,
-                    "Use `Return` key to start button mapping.\nPress any button to hide message.",
-                )?;
+            canvas.set_blend_mode(BlendMode::Blend);
+            canvas.set_draw_color(Color::RGBA(0, 0, 0, 192));
+            canvas.fill_rect(None)?;
+            self.font.write(
+                canvas,
+                8,
+                8,
+                "Use 'Return' key to start mapping.\nPress any button to hide message.",
+            )?;
+
+            self.show_help = !pressed.is_empty() || !self.setup.enabled();
         }
 
         if self.setup.enabled() {

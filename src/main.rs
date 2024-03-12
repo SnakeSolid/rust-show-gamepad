@@ -71,6 +71,7 @@ fn run() -> ApplicationResult<()> {
                 } => {
                     visualiser.update_setup()?;
                 }
+                Event::KeyDown {..} => visualiser.hide_help(),
                 Event::JoyDeviceAdded { which, .. } => {
                     visualiser.joystick_add(&joystick_subsystem, which)?
                 }

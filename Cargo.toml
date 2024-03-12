@@ -12,14 +12,9 @@ structopt = "0.3"
 [dependencies.serde]
 version = "1.0"
 default-features = false
-features = [
-    "derive",
-]
+features = [ "derive" ]
 
 [dependencies.sdl2]
 version = "0.36"
 default-features = false
-features = [
-    "gfx",
-    "image",
-]
+features = [ "image" ]

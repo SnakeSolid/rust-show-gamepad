@@ -43,15 +43,15 @@ impl Input {
 impl ToString for Input {
     fn to_string(&self) -> String {
         match self {
-            Input::Button { button } => format!("button {}", button),
+            Input::Button { button } => format!("b{}", button),
             Input::Axis {
                 axis,
                 direction: Direction::Minimum,
-            } => format!("axis {} min", axis),
+            } => format!("a{} min", axis),
             Input::Axis {
                 axis,
                 direction: Direction::Maximum,
-            } => format!("axis {} max", axis),
+            } => format!("a{} max", axis),
         }
     }
 }
@@ -79,8 +79,6 @@ impl Mapping {
             entry.push(sprite_mapping);
             entry.sort_by_key(|sm| (-(sm.buttons.len() as isize), sm.sprite()));
         }
-
-        println!("{:?}", entry);
     }
 
     pub fn sprites(&self, giud: &str, pressed: &HashSet<Input>) -> Vec<usize> {

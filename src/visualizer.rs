@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::image::LoadTexture;
 use sdl2::joystick::Joystick;
 use sdl2::pixels::Color;
@@ -14,6 +13,7 @@ use sdl2::JoystickSubsystem;
 
 use crate::config::Config;
 use crate::error::ApplicationResult;
+use crate::font::Font;
 use crate::mapping::Input;
 use crate::mapping::Mapping;
 
@@ -21,6 +21,7 @@ pub struct Visualiser<'a> {
     background: Texture<'a>,
     sprites: HashMap<usize, Sprite<'a>>,
     preferences: PathBuf,
+    font: &'a Font<'a>,
     mapping: Mapping,
     joysticks: HashMap<u32, Joystick>,
     setup: SetupOverlay,
@@ -30,6 +31,7 @@ impl<'a> Visualiser<'a> {
     pub fn create<'b, T>(
         config: &Config,
         preferences: PathBuf,
+        font: &'b Font,
         texture_creator: &'b TextureCreator<T>,
         joystick_subsystem: &JoystickSubsystem,
     ) -> ApplicationResult<Visualiser<'b>> {
@@ -62,6 +64,7 @@ impl<'a> Visualiser<'a> {
             background,
             sprites,
             preferences,
+            font,
             mapping,
             joysticks,
             setup: SetupOverlay::new(n_sprites),
@@ -148,25 +151,28 @@ impl<'a> Visualiser<'a> {
 
             if let Some(sprite) = self.sprites.get(&sprite) {
                 canvas.copy(&sprite.texture(), None, None)?;
-                canvas.string(
+
+                self.font.write(
+                    canvas,
                     8,
                     8,
                     &format!("Binding input for {}", sprite.name()),
-                    Color::RGB(255, 255, 255),
                 )?;
             }
 
             if let Some(guid) = active_guid {
                 let mut buttons: Vec<_> = pressed.iter().map(ToString::to_string).collect();
                 buttons.sort();
-                canvas.string(
-                    8,
-                    24,
-                    &format!("Active keys: {}", buttons.join(", ")),
-                    Color::RGB(255, 255, 255),
-                )?;
 
                 self.setup.set_pressed(guid, pressed);
+                self.font.write(
+                    canvas,
+                    8,
+                    48,
+                    &format!("Active keys: {}", buttons.join(", ")),
+                )?;
+            } else {
+                self.font.write(canvas, 8, 48, &format!("No active keys"))?;
             }
         } else {
             if let Some(giud) = active_guid {

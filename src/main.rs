@@ -2,6 +2,7 @@
 
 mod config;
 mod error;
+mod font;
 mod mapping;
 mod options;
 mod visualizer;
@@ -11,6 +12,7 @@ use std::thread;
 use std::time::Duration;
 
 use error::ApplicationResult;
+use font::Font;
 use options::Options;
 use sdl2::event::Event;
 use sdl2::filesystem;
@@ -46,8 +48,14 @@ fn run() -> ApplicationResult<()> {
     let mut preferences = PathBuf::from(preferences);
     preferences.push("preferences.yaml");
 
-    let mut visualiser =
-        Visualiser::create(&config, preferences, &texture_creator, &joystick_subsystem)?;
+    let font = Font::create(16, 32, &texture_creator)?;
+    let mut visualiser = Visualiser::create(
+        &config,
+        preferences,
+        &font,
+        &texture_creator,
+        &joystick_subsystem,
+    )?;
 
     'running: loop {
         for event in event_pump.poll_iter() {

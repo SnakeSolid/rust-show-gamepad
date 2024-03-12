@@ -22,6 +22,7 @@ pub struct Visualiser<'a> {
     sprites: HashMap<usize, Sprite<'a>>,
     preferences: PathBuf,
     font: &'a Font<'a>,
+    show_help: bool,
     mapping: Mapping,
     joysticks: HashMap<u32, Joystick>,
     setup: SetupOverlay,
@@ -65,6 +66,7 @@ impl<'a> Visualiser<'a> {
             sprites,
             preferences,
             font,
+            show_help: true,
             mapping,
             joysticks,
             setup: SetupOverlay::new(n_sprites),
@@ -141,6 +143,15 @@ impl<'a> Visualiser<'a> {
         }
 
         canvas.copy(&self.background, None, None)?;
+
+        if self.show_help {
+                self.font.write(
+                    canvas,
+                    8,
+                    8,
+                    "Use `Return` key to start button mapping.\nPress any button to hide message.",
+                )?;
+        }
 
         if self.setup.enabled() {
             canvas.set_blend_mode(BlendMode::Blend);

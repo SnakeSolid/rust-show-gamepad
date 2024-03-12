@@ -1,21 +1,21 @@
-background: "controller.png"
+background: "sprites/controller.png"
 
 sprites:
-    - { group: 1, name: "Up", path: "controller-up.png" }
-    - { group: 1, name: "Up Right", path: "controller-up-right.png" }
-    - { group: 1, name: "Right", path: "controller-right.png" }
-    - { group: 1, name: "Right Down", path: "controller-right-down.png" }
-    - { group: 1, name: "Down", path: "controller-down.png" }
-    - { group: 1, name: "Left Down", path: "controller-left-down.png" }
-    - { group: 1, name: "Left", path: "controller-left.png" }
-    - { group: 1, name: "Left Up", path: "controller-left-up.png" }
+    - { group: 1, name: "Up", path: "sprites/controller-up.png" }
+    - { group: 1, name: "Up Right", path: "sprites/controller-up-right.png" }
+    - { group: 1, name: "Right", path: "sprites/controller-right.png" }
+    - { group: 1, name: "Right Down", path: "sprites/controller-right-down.png" }
+    - { group: 1, name: "Down", path: "sprites/controller-down.png" }
+    - { group: 1, name: "Left Down", path: "sprites/controller-left-down.png" }
+    - { group: 1, name: "Left", path: "sprites/controller-left.png" }
+    - { group: 1, name: "Left Up", path: "sprites/controller-left-up.png" }
 
-    - { group: 1, name: "Select", path: "controller-select.png" }
-    - { group: 2, name: "Start", path: "controller-start.png" }
+    - { group: 1, name: "Select", path: "sprites/controller-select.png" }
+    - { group: 2, name: "Start", path: "sprites/controller-start.png" }
 
-    - { group: 2, name: "B", path: "controller-b.png" }
-    - { group: 2, name: "B + A", path: "controller-ba.png" }
-    - { group: 2, name: "A", path: "controller-a.png" }
-    - { group: 2, name: "Turbo B", path: "controller-b-turbo.png" }
-    - { group: 2, name: "Turbo B + A", path: "controller-ba-turbo.png" }
-    - { group: 2, name: "Turbo A", path: "controller-a-turbo.png" }
+    - { group: 2, name: "B", path: "sprites/controller-b.png" }
+    - { group: 2, name: "B + A", path: "sprites/controller-ba.png" }
+    - { group: 2, name: "A", path: "sprites/controller-a.png" }
+    - { group: 2, name: "Turbo B", path: "sprites/controller-b-turbo.png" }
+    - { group: 2, name: "Turbo B + A", path: "sprites/controller-ba-turbo.png" }
+    - { group: 2, name: "Turbo A", path: "sprites/controller-a-turbo.png" }

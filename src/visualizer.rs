@@ -96,6 +96,7 @@ impl<'a> Visualiser<'a> {
 
             if !self.setup.next_sprite() {
                 self.mapping.save(&self.preferences)?;
+                self.show_help = false;
             }
         } else {
             self.setup.enable();
@@ -138,7 +139,6 @@ impl<'a> Visualiser<'a> {
                     8,
                     &format!("Binding input for {}.", sprite.name()),
                 )?;
-                self.font.write(canvas, 8, 88, "Press 'Return' to save.")?;
             }
 
             if !pressed.is_empty() {
@@ -151,8 +151,10 @@ impl<'a> Visualiser<'a> {
                     48,
                     &format!("Active keys: {}", buttons.join(", ")),
                 )?;
+                self.font.write(canvas, 8, 88, "Press 'Return' to save.")?;
             } else {
                 self.font.write(canvas, 8, 48, &format!("No active keys"))?;
+                self.font.write(canvas, 8, 88, "Press 'Return' to skip.")?;
             }
         } else {
             if let Some(giud) = self.joysticks.active() {

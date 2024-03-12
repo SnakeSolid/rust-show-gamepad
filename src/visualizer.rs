@@ -14,7 +14,6 @@ use crate::config::Config;
 use crate::error::ApplicationResult;
 use crate::font::Font;
 use crate::joysticks::Joysticks;
-use crate::mapping::Input;
 use crate::mapping::Mapping;
 
 pub struct Visualiser<'a> {
@@ -177,34 +176,10 @@ impl<'a> Visualiser<'a> {
 }
 
 #[derive(Debug)]
-struct InputState {
-    guid: String,
-    pressed: HashSet<Input>,
-}
-
-impl InputState {
-    pub fn new(guid: &str, pressed: &HashSet<Input>) -> Self {
-        Self {
-            guid: guid.into(),
-            pressed: pressed.clone(),
-        }
-    }
-
-    pub fn guid(&self) -> &str {
-        &self.guid
-    }
-
-    pub fn pressed(&self) -> &HashSet<Input> {
-        &self.pressed
-    }
-}
-
-#[derive(Debug)]
 struct SetupOverlay {
     n_sprites: usize,
     enabled: bool,
     current_sprite: usize,
-    pressed: Option<InputState>,
 }
 
 impl SetupOverlay {
@@ -213,7 +188,6 @@ impl SetupOverlay {
             n_sprites,
             enabled: false,
             current_sprite: 0,
-            pressed: None,
         }
     }
 
@@ -225,18 +199,9 @@ impl SetupOverlay {
         self.current_sprite
     }
 
-    pub fn pressed(&mut self) -> Option<InputState> {
-        self.pressed.take()
-    }
-
-    pub fn set_pressed(&mut self, guid: &str, pressed: &HashSet<Input>) {
-        self.pressed = Some(InputState::new(guid, pressed));
-    }
-
     pub fn enable(&mut self) {
         self.enabled = true;
         self.current_sprite = 0;
-        self.pressed = None;
     }
 
     pub fn next_sprite(&mut self) -> bool {

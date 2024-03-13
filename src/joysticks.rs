@@ -27,6 +27,7 @@ impl GuidAxis {
 struct AxisLimits {
     min: i16,
     max: i16,
+    trim: bool,
 }
 
 impl AxisLimits {
@@ -34,6 +35,7 @@ impl AxisLimits {
         Self {
             min: value,
             max: value,
+            trim: value == i16::MIN || value == i16::MAX,
         }
     }
 
@@ -42,13 +44,14 @@ impl AxisLimits {
         self.max = self.max.max(value);
     }
 
-    pub fn deadzones(&self) -> (i16, i16) {
-        let offset = self.min as i32;
-        let range = self.max as i32 - self.min as i32;
-        let left = offset + range / 3;
-        let right = offset + 2 * range / 3;
+    pub fn deadzone(&self) -> i16 {
+        let range = (self.min as i32).max(self.max as i32);
 
-        (left as i16, right as i16)
+        (range / 3) as i16
+    }
+
+    pub fn trim(&self) -> bool {
+        self.trim
     }
 }
 
@@ -73,13 +76,22 @@ impl JoustickLimits {
             .extend(value)
     }
 
-    pub fn deadzones(&self, guid: &str, axis: u32) -> (i16, i16) {
+    pub fn deadzone(&self, guid: &str, axis: u32) -> i16 {
         let key = GuidAxis::new(guid, axis);
 
         self.limits
             .get(&key)
-            .map(|limits| limits.deadzones())
-            .unwrap_or((0, 0))
+            .map(|limits| limits.deadzone())
+            .unwrap_or(0)
+    }
+
+    pub fn trim(&self, guid: &str, axis: u32) -> bool {
+        let key = GuidAxis::new(guid, axis);
+
+        self.limits
+            .get(&key)
+            .map(|limits| limits.trim())
+            .unwrap_or(false)
     }
 }
 
@@ -146,14 +158,16 @@ impl Joysticks {
             for axis in 0..joystick.num_axes() {
                 let value = joystick.axis(axis)?;
                 self.limits.update(&guid, axis, value);
-                let (min, max) = self.limits.deadzones(&guid, axis);
+                let deadzone = self.limits.deadzone(&guid, axis);
+                let trim = self.limits.trim(&guid, axis);
 
                 match value {
-                    v if v < min => {
+                    v if trim && v == i16::MIN || v == i16::MAX => {}
+                    v if v < -deadzone => {
                         self.pressed.insert(Input::axis_min(axis));
                         self.active = Some(guid.clone());
                     }
-                    v if v > max => {
+                    v if v > deadzone => {
                         self.pressed.insert(Input::axis_max(axis));
                         self.active = Some(guid.clone());
                     }

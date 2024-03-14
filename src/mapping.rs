@@ -71,12 +71,17 @@ impl From<HatState> for State {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Input {
+    Key { key: u32 },
     Button { button: u32 },
     Axis { axis: u32, direction: Direction },
     Hat { hat: u32, state: State },
 }
 
 impl Input {
+    pub fn key(key: u32) -> Self {
+        Input::Key { key }
+    }
+
     pub fn button(button: u32) -> Self {
         Input::Button { button }
     }
@@ -109,6 +114,7 @@ impl Input {
 impl ToString for Input {
     fn to_string(&self) -> String {
         match self {
+            Input::Key { key } => format!("k{}", key),
             Input::Button { button } => format!("b{}", button),
             Input::Axis { axis, direction } => format!("a{} {}", axis, direction.as_str()),
             Input::Hat { hat, state } => format!("h{} {}", hat, state.as_str()),
@@ -146,7 +152,7 @@ impl Mapping {
 
         if let Some(list) = self.joysticks.get(giud) {
             for sprite_mapping in list {
-                if sprite_mapping.buttons() == pressed {
+                if sprite_mapping.buttons().is_subset(pressed) {
                     result.push(sprite_mapping.sprite());
                 }
             }

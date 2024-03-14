@@ -74,7 +74,14 @@ fn run() -> ApplicationResult<()> {
                     keycode: Some(Keycode::F2),
                     ..
                 } => visualiser.reset_limits(),
-                Event::KeyDown { .. } => visualiser.hide_help(),
+                Event::KeyDown {
+                    scancode: Some(scancode),
+                    ..
+                } => visualiser.key_down(scancode),
+                Event::KeyUp {
+                    scancode: Some(scancode),
+                    ..
+                } => visualiser.key_up(scancode),
                 Event::JoyDeviceAdded { which, .. } => {
                     visualiser.joystick_add(&joystick_subsystem, which)?
                 }

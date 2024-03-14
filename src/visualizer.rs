@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use sdl2::image::LoadTexture;
+use sdl2::keyboard::Scancode;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::render::Texture;
@@ -87,10 +88,6 @@ impl<'a> Visualiser<'a> {
         self.joysticks.update()
     }
 
-    pub fn hide_help(&mut self) {
-        self.show_help = false;
-    }
-
     pub fn update_setup(&mut self) -> ApplicationResult<()> {
         if self.setup.enabled() {
             if let Some(guid) = self.joysticks.active() {
@@ -113,6 +110,15 @@ impl<'a> Visualiser<'a> {
 
     pub fn reset_limits(&mut self) {
         self.joysticks.reset_limits();
+    }
+
+    pub fn key_down(&mut self, scancode: Scancode) {
+        self.joysticks.key_down(scancode as u32);
+        self.show_help = false;
+    }
+
+    pub fn key_up(&mut self, scancode: Scancode) {
+        self.joysticks.key_up(scancode as u32);
     }
 
     pub fn draw(&mut self, canvas: &mut WindowCanvas) -> ApplicationResult<()> {
@@ -181,9 +187,25 @@ impl<'a> Visualiser<'a> {
                         }
                     }
                 }
-            } else {
+
                 for sprite in self.default.iter().flat_map(|i| self.sprites.get(i)) {
-                    canvas.copy(&sprite.texture(), None, None)?;
+                    if groups.insert(sprite.group()) {
+                        canvas.copy(&sprite.texture(), None, None)?;
+                    }
+                }
+
+                let mut buttons: Vec<_> = pressed.iter().map(ToString::to_string).collect();
+                buttons.sort();
+
+                self.font.write(canvas, 8, 256, &buttons.join(", "))?;
+                self.font.write(canvas, 8, 288, &format!("{:?}", groups))?;
+            } else if !self.show_help {
+                let mut groups = HashSet::new();
+
+                for sprite in self.default.iter().flat_map(|i| self.sprites.get(i)) {
+                    if groups.insert(sprite.group()) {
+                        canvas.copy(&sprite.texture(), None, None)?;
+                    }
                 }
             }
         }

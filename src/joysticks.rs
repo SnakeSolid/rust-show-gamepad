@@ -101,6 +101,7 @@ impl JoustickLimits {
 pub struct Joysticks {
     active: Option<String>,
     pressed: HashSet<Input>,
+    keyboard: HashSet<Input>,
     joysticks: HashMap<u32, Joystick>,
     limits: JoustickLimits,
 }
@@ -117,6 +118,7 @@ impl Joysticks {
 
         Ok(Self {
             active: None,
+            keyboard: HashSet::new(),
             pressed: HashSet::new(),
             joysticks,
             limits: JoustickLimits::new(),
@@ -153,6 +155,14 @@ impl Joysticks {
 
     pub fn reset_limits(&mut self) {
         self.limits.reset();
+    }
+
+    pub fn key_down(&mut self, key: u32) {
+        self.keyboard.insert(Input::key(key));
+    }
+
+    pub fn key_up(&mut self, key: u32) {
+        self.keyboard.remove(&Input::key(key));
     }
 
     pub fn update(&mut self) -> ApplicationResult<()> {
@@ -198,6 +208,11 @@ impl Joysticks {
                     self.active = Some(guid);
                 }
             }
+        }
+
+        if !self.keyboard.is_empty() {
+            self.pressed.extend(&self.keyboard);
+            self.active = Some("Keyboard".into());
         }
 
         Ok(())

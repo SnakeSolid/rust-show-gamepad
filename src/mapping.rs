@@ -136,10 +136,9 @@ impl Mapping {
 
     pub fn push(&mut self, guid: &str, pressed: &HashSet<Input>, sprite: usize) {
         let entry = self.joysticks.entry(guid.into()).or_insert_with(Vec::new);
+        entry.retain(|sm| sm.sprite() != sprite);
 
-        if pressed.is_empty() {
-            entry.retain(|sm| sm.sprite() == sprite);
-        } else {
+        if !pressed.is_empty() {
             let sprite_mapping = SpriteMapping::new(pressed.clone(), sprite);
 
             entry.push(sprite_mapping);

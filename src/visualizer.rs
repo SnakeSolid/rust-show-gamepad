@@ -192,12 +192,6 @@ impl<'a> Visualiser<'a> {
                         canvas.copy(&sprite.texture(), None, None)?;
                     }
                 }
-
-                let mut buttons: Vec<_> = pressed.iter().map(ToString::to_string).collect();
-                buttons.sort();
-
-                self.font.write(canvas, 8, 256, &buttons.join(", "))?;
-                self.font.write(canvas, 8, 288, &format!("{:?}", groups))?;
             } else if !self.show_help {
                 let mut groups = HashSet::new();
 

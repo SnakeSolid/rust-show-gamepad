@@ -69,17 +69,17 @@ impl From<HatState> for State {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub enum Input {
-    Key { key: u32 },
+    Key { key: String },
     Button { button: u32 },
     Axis { axis: u32, direction: Direction },
     Hat { hat: u32, state: State },
 }
 
 impl Input {
-    pub fn key(key: u32) -> Self {
-        Input::Key { key }
+    pub fn key(key: &str) -> Self {
+        Input::Key { key: key.into() }
     }
 
     pub fn button(button: u32) -> Self {
@@ -114,7 +114,7 @@ impl Input {
 impl ToString for Input {
     fn to_string(&self) -> String {
         match self {
-            Input::Key { key } => format!("k{}", key),
+            Input::Key { key } => key.clone(),
             Input::Button { button } => format!("b{}", button),
             Input::Axis { axis, direction } => format!("a{} {}", axis, direction.as_str()),
             Input::Hat { hat, state } => format!("h{} {}", hat, state.as_str()),

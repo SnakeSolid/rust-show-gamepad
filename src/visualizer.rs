@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use sdl2::image::LoadTexture;
-use sdl2::keyboard::Scancode;
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::render::Texture;
@@ -112,13 +111,13 @@ impl<'a> Visualiser<'a> {
         self.joysticks.reset_limits();
     }
 
-    pub fn key_down(&mut self, scancode: Scancode) {
-        self.joysticks.key_down(scancode as u32);
+    pub fn key_down(&mut self, key: &str) {
+        self.joysticks.key_down(key);
         self.show_help = false;
     }
 
-    pub fn key_up(&mut self, scancode: Scancode) {
-        self.joysticks.key_up(scancode as u32);
+    pub fn key_up(&mut self, key: &str) {
+        self.joysticks.key_up(key);
     }
 
     pub fn draw(&mut self, canvas: &mut WindowCanvas) -> ApplicationResult<()> {

@@ -157,11 +157,11 @@ impl Joysticks {
         self.limits.reset();
     }
 
-    pub fn key_down(&mut self, key: u32) {
+    pub fn key_down(&mut self, key: &str) {
         self.keyboard.insert(Input::key(key));
     }
 
-    pub fn key_up(&mut self, key: u32) {
+    pub fn key_up(&mut self, key: &str) {
         self.keyboard.remove(&Input::key(key));
     }
 
@@ -211,7 +211,7 @@ impl Joysticks {
         }
 
         if !self.keyboard.is_empty() {
-            self.pressed.extend(&self.keyboard);
+            self.pressed.extend(self.keyboard.iter().cloned());
             self.active = Some("Keyboard".into());
         }
 

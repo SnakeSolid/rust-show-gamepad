@@ -30,7 +30,7 @@ use visualizer::Visualiser;
 const FRAME_TIME: Duration = Duration::from_millis(1_000 / 60);
 
 fn run() -> ApplicationResult<()> {
-    sdl2::hint::set("SDL_JOYSTICK_THREAD", "1");
+    sdl2::hint::set("SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1");
 
     let options = Options::from_args();
     let config = config::load(options.config_path())?;
@@ -77,11 +77,11 @@ fn run() -> ApplicationResult<()> {
                 Event::KeyDown {
                     scancode: Some(scancode),
                     ..
-                } => visualiser.key_down(scancode),
+                } => visualiser.key_down(scancode.name()),
                 Event::KeyUp {
                     scancode: Some(scancode),
                     ..
-                } => visualiser.key_up(scancode),
+                } => visualiser.key_up(scancode.name()),
                 Event::JoyDeviceAdded { which, .. } => {
                     visualiser.joystick_add(&joystick_subsystem, which)?
                 }

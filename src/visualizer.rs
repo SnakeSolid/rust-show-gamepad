@@ -39,20 +39,22 @@ impl<'a> Visualiser<'a> {
         let background = texture_creator.load_texture(config.background())?;
         let mut sprites = HashMap::new();
         let mut default = HashSet::new();
+        let mut bindable = Vec::new();
 
         for (id, sprite) in config.sprites().iter().enumerate() {
             let group = sprite.group();
             let name = sprite.name();
             let texture = texture_creator.load_texture(sprite.path())?;
 
-            sprites.insert(id.clone(), Sprite::new(group, name, texture));
+            sprites.insert(id, Sprite::new(group, name, texture));
 
             if sprite.default() {
-                default.insert(id.clone());
+                default.insert(id);
+            } else {
+                bindable.push(id)
             }
         }
 
-        let n_sprites = sprites.len();
         let mapping = match preferences.exists() {
             true => Mapping::load(&preferences)?,
             false => Mapping::new(),
@@ -67,7 +69,7 @@ impl<'a> Visualiser<'a> {
             show_help: true,
             mapping,
             joysticks: Joysticks::create(joystick_subsystem)?,
-            setup: SetupOverlay::new(n_sprites),
+            setup: SetupOverlay::new(&bindable),
         })
     }
 
@@ -89,14 +91,24 @@ impl<'a> Visualiser<'a> {
 
     pub fn update_setup(&mut self) -> ApplicationResult<()> {
         if self.setup.enabled() {
-            if let Some(guid) = self.joysticks.active() {
+            let active = self.joysticks.active();
+
+            if let Some(guid) = active {
                 let pressed = self.joysticks.pressed();
-                let sprite = self.setup.current_sprite();
+                let sprite = self.setup.current();
 
                 self.mapping.push(guid, pressed, sprite);
             }
 
             if !self.setup.next_sprite() {
+                if let Some(guid) = active {
+                    let empty = HashSet::new();
+
+                    for &sprite in &self.default {
+                        self.mapping.push(guid, &empty, sprite);
+                    }
+                }
+
                 self.mapping.save(&self.preferences)?;
                 self.show_help = false;
             }
@@ -139,7 +151,7 @@ impl<'a> Visualiser<'a> {
 
         if self.setup.enabled() {
             let pressed = self.joysticks.pressed();
-            let sprite = self.setup.current_sprite();
+            let sprite = self.setup.current();
 
             canvas.set_blend_mode(BlendMode::Blend);
             canvas.set_draw_color(Color::RGBA(0, 0, 0, 192));
@@ -209,17 +221,17 @@ impl<'a> Visualiser<'a> {
 
 #[derive(Debug)]
 struct SetupOverlay {
-    n_sprites: usize,
+    sprites: Vec<usize>,
     enabled: bool,
-    current_sprite: usize,
+    current: usize,
 }
 
 impl SetupOverlay {
-    pub fn new(n_sprites: usize) -> Self {
+    pub fn new(sprites: &[usize]) -> Self {
         Self {
-            n_sprites,
+            sprites: sprites.into(),
             enabled: false,
-            current_sprite: 0,
+            current: 0,
         }
     }
 
@@ -227,18 +239,21 @@ impl SetupOverlay {
         self.enabled
     }
 
-    pub fn current_sprite(&self) -> usize {
-        self.current_sprite
+    pub fn current(&self) -> usize {
+        match self.sprites.get(self.current) {
+            Some(&sprite) => sprite,
+            None => 0,
+        }
     }
 
     pub fn enable(&mut self) {
         self.enabled = true;
-        self.current_sprite = 0;
+        self.current = 0;
     }
 
     pub fn next_sprite(&mut self) -> bool {
-        self.current_sprite += 1;
-        self.enabled = self.current_sprite < self.n_sprites;
+        self.current += 1;
+        self.enabled = self.current < self.sprites.len();
         self.enabled
     }
 }

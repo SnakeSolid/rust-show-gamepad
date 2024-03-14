@@ -27,6 +27,8 @@ pub struct Sprite {
     group: usize,
     name: String,
     path: PathBuf,
+    #[serde(default)]
+    default: bool,
 }
 
 impl Sprite {
@@ -40,6 +42,10 @@ impl Sprite {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn default(&self) -> bool {
+        self.default
     }
 }
 

@@ -1,9 +1,8 @@
 background: "sprites/controller.png"
-
 sprites:
     - { group: 1, name: "Up", path: "sprites/controller-up.png" }
     - { group: 1, name: "Up Right", path: "sprites/controller-up-right.png" }
-    - { group: 1, name: "Right", path: "sprites/controller-right.png" }
+    - { group: 1, name: "Right", path: "sprites/controller-right.png", default: true }
     - { group: 1, name: "Right Down", path: "sprites/controller-right-down.png" }
     - { group: 1, name: "Down", path: "sprites/controller-down.png" }
     - { group: 1, name: "Left Down", path: "sprites/controller-left-down.png" }
@@ -13,7 +12,7 @@ sprites:
     - { group: 1, name: "Select", path: "sprites/controller-select.png" }
     - { group: 2, name: "Start", path: "sprites/controller-start.png" }
 
-    - { group: 2, name: "B", path: "sprites/controller-b.png" }
+    - { group: 2, name: "B", path: "sprites/controller-b.png", default: true }
     - { group: 2, name: "B + A", path: "sprites/controller-ba.png" }
     - { group: 2, name: "A", path: "sprites/controller-a.png" }
     - { group: 2, name: "Turbo B", path: "sprites/controller-b-turbo.png" }

@@ -146,7 +146,7 @@ impl Mapping {
 
         if let Some(list) = self.joysticks.get(giud) {
             for sprite_mapping in list {
-                if sprite_mapping.buttons().is_superset(pressed) {
+                if sprite_mapping.buttons() == pressed {
                     result.push(sprite_mapping.sprite());
                 }
             }

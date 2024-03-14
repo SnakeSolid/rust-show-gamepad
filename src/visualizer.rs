@@ -19,6 +19,7 @@ use crate::mapping::Mapping;
 pub struct Visualiser<'a> {
     background: Texture<'a>,
     sprites: HashMap<usize, Sprite<'a>>,
+    default: HashSet<usize>,
     preferences: PathBuf,
     font: &'a Font<'a>,
     show_help: bool,
@@ -37,13 +38,18 @@ impl<'a> Visualiser<'a> {
     ) -> ApplicationResult<Visualiser<'b>> {
         let background = texture_creator.load_texture(config.background())?;
         let mut sprites = HashMap::new();
+        let mut default = HashSet::new();
 
         for (id, sprite) in config.sprites().iter().enumerate() {
             let group = sprite.group();
             let name = sprite.name();
-            let sprite = texture_creator.load_texture(sprite.path())?;
+            let texture = texture_creator.load_texture(sprite.path())?;
 
-            sprites.insert(id.clone(), Sprite::new(group, name, sprite));
+            sprites.insert(id.clone(), Sprite::new(group, name, texture));
+
+            if sprite.default() {
+                default.insert(id.clone());
+            }
         }
 
         let n_sprites = sprites.len();
@@ -55,6 +61,7 @@ impl<'a> Visualiser<'a> {
         Ok(Visualiser {
             background,
             sprites,
+            default,
             preferences,
             font,
             show_help: true,
@@ -173,6 +180,10 @@ impl<'a> Visualiser<'a> {
                             canvas.copy(&sprite.texture(), None, None)?;
                         }
                     }
+                }
+            } else {
+                for sprite in self.default.iter().flat_map(|i| self.sprites.get(i)) {
+                    canvas.copy(&sprite.texture(), None, None)?;
                 }
             }
         }

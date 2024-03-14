@@ -104,6 +104,10 @@ impl<'a> Visualiser<'a> {
         Ok(())
     }
 
+    pub fn reset_limits(&mut self) {
+        self.joysticks.reset_limits();
+    }
+
     pub fn draw(&mut self, canvas: &mut WindowCanvas) -> ApplicationResult<()> {
         canvas.copy(&self.background, None, None)?;
 
@@ -115,7 +119,7 @@ impl<'a> Visualiser<'a> {
                 canvas,
                 8,
                 8,
-                "Use 'Return' key to start mapping.\nPress any button to hide message.",
+                "Use F1 to start mapping.\nPress any button to hide message.",
             )?;
 
             self.show_help = !self.joysticks.released() || !self.setup.enabled();
@@ -150,10 +154,12 @@ impl<'a> Visualiser<'a> {
                     48,
                     &format!("Active keys: {}", buttons.join(", ")),
                 )?;
-                self.font.write(canvas, 8, 88, "Press 'Return' to save.")?;
+                self.font
+                    .write(canvas, 8, 88, "Press F1 to save, F2 reset limit.")?;
             } else {
                 self.font.write(canvas, 8, 48, &format!("No active keys"))?;
-                self.font.write(canvas, 8, 88, "Press 'Return' to skip.")?;
+                self.font
+                    .write(canvas, 8, 88, "Press F1 to skip, F2 reset limit.")?;
             }
         } else {
             if let Some(giud) = self.joysticks.active() {

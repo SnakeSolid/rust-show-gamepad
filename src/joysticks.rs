@@ -24,35 +24,43 @@ impl GuidAxis {
 }
 
 #[derive(Debug)]
-struct AxisLimits {
-    min: i16,
-    max: i16,
-    trim: bool,
+pub struct AxisLimits {
+    default: i32,
+    min: i32,
+    max: i32,
 }
 
 impl AxisLimits {
     pub fn new(value: i16) -> Self {
         Self {
-            min: value,
-            max: value,
-            trim: value == i16::MIN || value == i16::MAX,
+            default: value as i32,
+            min: value as i32,
+            max: value as i32,
         }
     }
 
     pub fn extend(&mut self, value: i16) {
-        self.min = self.min.min(value);
-        self.max = self.max.max(value);
+        self.min = self.min.min(value as i32);
+        self.max = self.max.max(value as i32);
     }
 
-    pub fn deadzone(&self) -> i16 {
-        let range = (self.min as i32).max(self.max as i32);
+    pub fn zone(&self, value: i16) -> AxisZone {
+        let bound = (self.min).max(self.max) / 4;
 
-        (range / 3) as i16
+        match value as i32 {
+            v if (v - self.default).abs() < bound => AxisZone::Default,
+            v if v < self.default => AxisZone::Min,
+            v if v > self.default => AxisZone::Max,
+            _ => AxisZone::Default,
+        }
     }
+}
 
-    pub fn trim(&self) -> bool {
-        self.trim
-    }
+#[derive(Debug)]
+pub enum AxisZone {
+    Min,
+    Default,
+    Max,
 }
 
 #[derive(Debug)]
@@ -67,6 +75,10 @@ impl JoustickLimits {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.limits.clear();
+    }
+
     pub fn update(&mut self, guid: &str, axis: u32, value: i16) {
         let key = GuidAxis::new(guid, axis);
 
@@ -76,22 +88,13 @@ impl JoustickLimits {
             .extend(value)
     }
 
-    pub fn deadzone(&self, guid: &str, axis: u32) -> i16 {
+    pub fn zone(&self, guid: &str, axis: u32, value: i16) -> AxisZone {
         let key = GuidAxis::new(guid, axis);
 
         self.limits
             .get(&key)
-            .map(|limits| limits.deadzone())
-            .unwrap_or(0)
-    }
-
-    pub fn trim(&self, guid: &str, axis: u32) -> bool {
-        let key = GuidAxis::new(guid, axis);
-
-        self.limits
-            .get(&key)
-            .map(|limits| limits.trim())
-            .unwrap_or(false)
+            .map(|limits| limits.zone(value))
+            .unwrap_or(AxisZone::Default)
     }
 }
 
@@ -148,6 +151,10 @@ impl Joysticks {
         self.pressed.is_empty()
     }
 
+    pub fn reset_limits(&mut self) {
+        self.limits.reset();
+    }
+
     pub fn update(&mut self) -> ApplicationResult<()> {
         self.pressed.clear();
         self.active = None;
@@ -158,16 +165,14 @@ impl Joysticks {
             for axis in 0..joystick.num_axes() {
                 let value = joystick.axis(axis)?;
                 self.limits.update(&guid, axis, value);
-                let deadzone = self.limits.deadzone(&guid, axis);
-                let trim = self.limits.trim(&guid, axis);
+                let zone = self.limits.zone(&guid, axis, value);
 
-                match value {
-                    v if trim && v == i16::MIN || v == i16::MAX => {}
-                    v if v < -deadzone => {
+                match zone {
+                    AxisZone::Min => {
                         self.pressed.insert(Input::axis_min(axis));
                         self.active = Some(guid.clone());
                     }
-                    v if v > deadzone => {
+                    AxisZone::Max => {
                         self.pressed.insert(Input::axis_max(axis));
                         self.active = Some(guid.clone());
                     }

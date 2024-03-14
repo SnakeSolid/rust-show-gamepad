@@ -67,11 +67,13 @@ fn run() -> ApplicationResult<()> {
                     ..
                 } => break 'running,
                 Event::KeyDown {
-                    keycode: Some(Keycode::Return),
+                    keycode: Some(Keycode::F1),
                     ..
-                } => {
-                    visualiser.update_setup()?;
-                }
+                } => visualiser.update_setup()?,
+                Event::KeyDown {
+                    keycode: Some(Keycode::F2),
+                    ..
+                } => visualiser.reset_limits(),
                 Event::KeyDown { .. } => visualiser.hide_help(),
                 Event::JoyDeviceAdded { which, .. } => {
                     visualiser.joystick_add(&joystick_subsystem, which)?

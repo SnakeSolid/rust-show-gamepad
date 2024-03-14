@@ -30,7 +30,7 @@ use visualizer::Visualiser;
 const FRAME_TIME: Duration = Duration::from_millis(1_000 / 60);
 
 fn run() -> ApplicationResult<()> {
-    sdl2::hint::set("SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1");
+    sdl2::hint::set("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1");
 
     let options = Options::from_args();
     let config = config::load(options.config_path())?;

@@ -11,8 +11,11 @@ keys. Hold keys corresponding to current sprite and press `F1` again to
 select next sprite. After binding last sprite this combination will be
 saved to preferences.
 
+Press `F2` to cancel mapping. Application will exit from mapping mode, but
+all assigned keys will be saved.
+
 If application show pressed buttons (sticks or shoulders) which actually
-does not. Press `F2` to save actual positions as default axes value.
+does not. Press `F3` to save actual positions as default axes value.
 
 Application support all joysticks and keyboard. Keyboard will work only in
 active window and can be used to test configuration changes.

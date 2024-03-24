@@ -119,6 +119,10 @@ impl<'a> Visualiser<'a> {
         Ok(())
     }
 
+    pub fn cancel_setup(&mut self) {
+        self.setup.disable();
+    }
+
     pub fn reset_limits(&mut self) {
         self.joysticks.reset_limits();
     }
@@ -179,11 +183,15 @@ impl<'a> Visualiser<'a> {
                     &format!("Active keys: {}", buttons.join(", ")),
                 )?;
                 self.font
-                    .write(canvas, 8, 88, "Press F1 to save, F2 reset limit.")?;
+                    .write(canvas, 8, 88, "Press: F1 - save, F2 - cancel mapping,")?;
+                self.font
+                    .write(canvas, 8, 120, "       F3 - reset limits.")?;
             } else {
                 self.font.write(canvas, 8, 48, &format!("No active keys"))?;
                 self.font
-                    .write(canvas, 8, 88, "Press F1 to skip, F2 reset limit.")?;
+                    .write(canvas, 8, 88, "Press: F1 - skip, F2 - cancel mapping,")?;
+                self.font
+                    .write(canvas, 8, 120, "       F3 - reset limits.")?;
             }
         } else {
             if let Some(giud) = self.joysticks.active() {
@@ -248,6 +256,11 @@ impl SetupOverlay {
 
     pub fn enable(&mut self) {
         self.enabled = true;
+        self.current = 0;
+    }
+
+    pub fn disable(&mut self) {
+        self.enabled = false;
         self.current = 0;
     }
 

@@ -73,6 +73,10 @@ fn run() -> ApplicationResult<()> {
                 Event::KeyDown {
                     keycode: Some(Keycode::F2),
                     ..
+                } => visualiser.cancel_setup(),
+                Event::KeyDown {
+                    keycode: Some(Keycode::F3),
+                    ..
                 } => visualiser.reset_limits(),
                 Event::KeyDown {
                     scancode: Some(scancode),
